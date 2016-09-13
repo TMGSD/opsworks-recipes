@@ -1,15 +1,17 @@
-private_ip = node['opsworks']['instance']['private_ip']
-hostname = node['opsworks']['instance']['hostname']
+instance = search("aws_opsworks_instance", "self:true").first
+
+private_ip = instance['private_ip']
+hostname = instance['hostname']
 members = Array.new
 ip_enable_ba = nil
 
-node['opsworks']['layers']['etcd']['instances'].each do |inst|
-	members << inst[0]+"=http://"+inst[1][:private_ip]+":2380"
+
+search(:node, "name:etcd*").each do |inst|
+	members << inst['hostname']+"=http://"+inst['ipaddress']+":2380"
 	if ip_enable_ba == nil
-		ip_enable_ba = inst[1][:private_ip]
+		ip_enable_ba = inst['ipaddress']
 	end
 end
-
 template "/root/etcd_static_bootstrap.sh" do
 	mode "0755"
 	owner "root"
@@ -63,4 +65,3 @@ if private_ip == ip_enable_ba
 	    subscribes :run, "bash[etcd_bootstrap]", :delayed
 	end
 end
-
